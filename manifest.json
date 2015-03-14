@@ -1,7 +1,7 @@
 {
     "manifest_version": 2,
     "name": "HFR Live",
-    "description": "Actualise automatiquement la page avec les nouveaux messages postés, change    de page quand c'est nécessaire et peut vous notifier en cas de nouveau message.",
+    "description": "Suivez en live la qualitay d'HFR!",
     "version": "0.1",
     "background": {
         "scripts": ["background.js"],
@@ -19,10 +19,11 @@
     },
     "content_scripts": [
         {
-            "matches": ["http://forum.hardware.fr/hfr/*","http://forum.hardware.fr/forum2*"],
+            "matches": ["http://forum.hardware.fr/hfr/*", "http://forum.hardware.fr/forum2*"],
             "js": ["jquery-2.1.3.min.js", "content.js"]
         }
     ],
+    "content_security_policy": "script-src 'self' https://ssl.google-analytics.com; object-src 'self'",
     "permissions": [
         "declarativeContent",
         "activeTab", "notifications",
