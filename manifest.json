@@ -1,0 +1,31 @@
+{
+    "manifest_version": 2,
+    "name": "HFR Live",
+    "description": "Actualise automatiquement la page avec les nouveaux messages postés, change    de page quand c'est nécessaire et peut vous notifier en cas de nouveau message.",
+    "version": "0.1",
+    "background": {
+        "scripts": ["background.js"],
+        "persistent": false
+    },
+    "icons": {
+        "128": "images/icon_128.png",
+        "48": "images/icon_48.png",
+        "16": "images/icon_16.png"
+
+    },
+    "page_action": {
+        "default_icon": "images/icon_16.png",
+        "default_popup": "popup.html"
+    },
+    "content_scripts": [
+        {
+            "matches": ["http://forum.hardware.fr/hfr/*","http://forum.hardware.fr/forum2*"],
+            "js": ["jquery-2.1.3.min.js", "content.js"]
+        }
+    ],
+    "permissions": [
+        "declarativeContent",
+        "activeTab", "notifications",
+        "tabs", "http://*.hardware.fr/*"
+    ]
+}
