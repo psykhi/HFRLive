@@ -74,13 +74,14 @@ function onNewRefreshingState(state)
 
 function onNotificationCheckboxChange()
 {
+    console.log("changed checkbox");
     if (document.getElementById("checkbox_notifications").checked)
     {
-        chrome.tabs.sendMessage(tabid, "enable_notifications", onNotificationStatusChange(state));
+        chrome.tabs.sendMessage(tabid, "enable_notifications", onNotificationStatusChange);
     }
     else
     {
-        chrome.tabs.sendMessage(tabid, "disable_notifications", onNotificationStatusChange(state));
+        chrome.tabs.sendMessage(tabid, "disable_notifications", onNotificationStatusChange);
     }
 }
 

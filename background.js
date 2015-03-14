@@ -20,7 +20,7 @@ chrome.runtime.onInstalled.addListener(function() {
 
 
 
-function displayNotification(notif)
+function displayNotification(notif, tabId)
 {
 
     var opt =
@@ -35,15 +35,17 @@ function displayNotification(notif)
 
 
     console.log(notif);
-    chrome.notifications.update("HFR", opt, function(updated) {
-        if (!updated)
-        {
-            chrome.notifications.create("HFR", opt, function() {
+    chrome.notifications.clear("HFR", function()
+    {
+        chrome.notifications.create("HFR", opt, function() {
+            chrome.notifications.onClicked.addListener(function()
+            {
+                chrome.tabs.update(tabId, {selected: true});
 
-            });
-        }
-
+            })
+        });
     });
+
 }
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     if (request === "is_selected") {
@@ -61,20 +63,25 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     }
     if (request.notification)
     {
-        displayNotification(request.notification);
+        displayNotification(request.notification, sender.tab.id);
     }
     if (request.redirect)
-        chrome.tabs.update(sender.tab.id, {url: request.redirect}, function() {
-
-            console.log("redirecting");
-            setTimeout(function()
+    {
+        if (request.options)
+        {
+            chrome.tabs.update(sender.tab.id, {url: request.redirect}, function()
             {
-                chrome.tabs.sendMessage(sender.tab.id, "start");
-            }, 2000);
+                console.log("redirecting");
+                setTimeout(function()
+                {
+                    chrome.pageAction.setIcon({tabId: sender.tab.id, path: "images/icon_16_on.png"});
+                    chrome.tabs.sendMessage(sender.tab.id, "start");
+                    chrome.tabs.sendMessage(sender.tab.id, request.options);
 
-
-
-        });
-
+                }, 2000);
+            }
+            );
+        }
+    }
     return true;
 });

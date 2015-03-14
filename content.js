@@ -6,11 +6,6 @@ var tabid = -1;
 console.log("Content loaded");
 
 
-chrome.runtime.sendMessage("who", function(resp)
-{
-    console.log(resp);
-});
-
 var options =
         {
             refresh_enabled: false,
@@ -23,7 +18,13 @@ var options =
 chrome.extension.onMessage.addListener(
         function(message, sender, sendResponse)
         {
-
+            console.log(message);
+            if (message.options)
+            {
+                options = message.options;
+                console.log("options set");
+                console.log(options.notifications_enabled);
+            }
             if (message === "start")
             {
                 console.log("got start message");
@@ -43,11 +44,11 @@ chrome.extension.onMessage.addListener(
             }
             else if (message === "disable_notifications")
             {
-                notifications_set_state(false);
+                notificationsEnable(false);
             }
             else if (message === "enable_notifications")
             {
-                notifications_set_state(true);
+                notificationsEnable(true);
             }
         }
 );
@@ -64,12 +65,18 @@ function check_if_selected()
     });
 }
 
-
-function sendNotification(html, avatar, pseudo)
+/**
+ * @brief Sends a notification for the last message
+ * @param {type} content 
+ * @param {type} avatar
+ * @param {type} pseudo
+ * @returns {undefined}
+ */
+function sendNotification(content, avatar, pseudo)
 {
     var notif =
             {
-                message: html,
+                message: content,
                 avatarUrl: avatar,
                 pseudo: pseudo
             };
@@ -77,29 +84,42 @@ function sendNotification(html, avatar, pseudo)
     var request =
             {
                 notification: notif
-            }
+            };
     if (!avatar)
         notif.avatarUrl = "icon.png";
     chrome.runtime.sendMessage(request);
 
 }
-function get_current_page()
+/**
+ * 
+ * @returns current page ex "33256"
+ */
+function getCurrentPageIndex()
 {
     return $(".cBackHeader").find("b:last").last().get(0).innerText;
 }
-
-function get_last_page(html)
+/**
+ * @brief Gets the latest page index
+ * @param {type} html
+ * @returns last page ex :"33256"
+ */
+function getLatestPageIndex(html)
 {
     return $(html).find(".cBackHeader .left ").children().last().get(0).innerText;
 }
-
+/**
+ * @brief Goes to the next forum page
+ * @param {type} html
+ * @returns {undefined}
+ */
 function goToNextPage(html)
 {
     var url = $(html).find(".pagepresuiv a").get(0).href;
     //window.location.href = $(html).find(".pagepresuiv a").get(0).href;
     var request =
             {
-                redirect: url
+                redirect: url,
+                options: options
             };
     chrome.runtime.sendMessage(request);
 
@@ -121,9 +141,9 @@ function refresh()
         var html = $.parseHTML(data);
         // Message count of current page
         var mess_count = $(html).find(".messagetable").length;
-        
-        var current_page = get_current_page();
-        var last_page = get_last_page(html);
+
+        var current_page = getCurrentPageIndex();
+        var last_page = getLatestPageIndex(html);
         if (current_page !== last_page)
         {
             console.log("page " + current_page + " vs new " + last_page);
@@ -139,11 +159,11 @@ function refresh()
             {
                 //We append the new message
                 message = $(html).find(".messagetable").get(i);
-                $(".messagetable").last().after(message).show("slide", {direction: "left"}, 1000);
+                $(".messagetable").last().after(message).fadeIn(1000);
             }
-            
+
             //We notify the user
-            buildNotification($(html).find(".messagetable").last());
+            buildNotification($(".messagetable").last());
             //We scroll to the last read message
             $('html, body').animate({
                 scrollTop: target.offset().top
@@ -153,19 +173,30 @@ function refresh()
 
 
 }
+/**
+ * @brief Builds and send a notification if the notifications are active
+ * @param {type} mess
+ * @returns {undefined}
+ */
 function buildNotification(mess)
 {
-    var messageText = mess.find(".messCase2").children("div:last").get(0).innerText;
-    var avatarUrl = mess.find(".messCase1").children("div:last").find("img").get(0).src;
-    var pseudo = mess.find(".messCase1").find(".s2").get(0).innerText;
-
     if (!is_selected)
     {
+        console.log("building notif");
+        var messageText = mess.find(".messCase2").children("div:last").get(0).innerText;
+        //var messageUrl = mess.find(".messCase1").children("div:first").find("img").get(0).src;
+        var avatarUrl = mess.find(".messCase1").children("div:last").find("img").get(0).src;
+        var pseudo = mess.find(".messCase1").find(".s2").get(0).innerText;
+
         if (options.notifications_enabled)
             sendNotification(messageText, avatarUrl, pseudo);
     }
 }
 
+/**
+ * @brief Main refresh loop
+ * @returns {undefined}
+ */
 function loop()
 {
     if (options.refresh_enabled) {
@@ -173,20 +204,32 @@ function loop()
     }
 }
 
-
+/**
+ * Starts the refreshing loop
+ * @returns {undefined}
+ */
 function startAutoRefresh()
 {
     timer = setInterval(loop, options.refresh_interval);
     options.refresh_enabled = true;
 }
 
+/**
+ * @brief Stops the refreshing loop
+ * @returns {undefined}
+ */
 function stopAutoRefresh()
 {
     clearInterval(timer);
     options.refresh_enabled = false;
 }
 
-function notifications_set_state(state)
+/**
+ * @brief Enables notifications
+ * @param {type} state
+ * @returns {undefined}
+ */
+function notificationsEnable(state)
 {
     options.notifications_enabled = state;
     console.log("notif " + state);
