@@ -28,7 +28,7 @@ function displayNotification(notif, tabId)
                 type: "basic",
                 iconUrl: "images/icon_80.png",
                 title: notif.pseudo,
-                message: notif.message,
+                message: notif.message.split("---------------")[0],
                 //buttons: [{
                 //          title: "Répondre"}]
             };
