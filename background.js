@@ -25,7 +25,7 @@ chrome.runtime.onInstalled.addListener(function() {
                 // We check we're on the right website
                 conditions: [
                     new chrome.declarativeContent.PageStateMatcher({
-                        pageUrl: {urlContains: 'forum.hardware.fr/forum2.php'}
+                        pageUrl: {urlMatches: 'forum\.hardware\.fr/forum2.php.|forum\.hardware\.fr/hfr/.'}
                     })
                 ],
                 //Whe show the page action
