@@ -16,6 +16,8 @@
  */
 var tabsState = [];
 
+var notif_op = false;
+var href_url;
 /***********************************SCRIPT************************************/
 // We show the page action icon
 chrome.runtime.onInstalled.addListener(function() {
@@ -115,12 +117,20 @@ function displayNotification(notif, tabId)
                 //We remove the potential signature
                 message: notif.message.split("---------------")[0],
                 buttons: [{
-                        title: "Répondre"}]
+                        title: "Répondre"}],
+                isClickable: true
             };
+
 //We display it (we remove the previous if there was any
-    chrome.notifications.clear("HFR", function()
-    {
-        chrome.notifications.create("HFR", opt, function() {
+
+
+    chrome.notifications.create("", opt, function() {
+
+        href_url = notif.messageUrl;
+        if (!notif_op)
+        {
+            notif_op = true;
+            console.log("creating listeners");
             chrome.notifications.onClicked.addListener(function()
             {
                 chrome.tabs.update(tabId, {selected: true});
@@ -129,9 +139,10 @@ function displayNotification(notif, tabId)
             // We link the "Reply" button to the message
             chrome.notifications.onButtonClicked.addListener(function(id, index)
             {
-                chrome.tabs.create({url: notif.messageUrl, active: true});
+                chrome.tabs.create({url: href_url, active: true});
             });
-
-        });
+        }
     });
+
+
 }
