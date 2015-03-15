@@ -1,4 +1,16 @@
 /**
+ * @file background.js
+ * @author psykhi (alex@theboredengineers.com)
+ * @date March 2015
+ * @brief Background script
+ * 
+ * Background scripts that show the page action icon when needed and also
+ * keeps track of the used tabs states.
+ * 
+ */
+
+
+/**
  * Our array where we keep the state of reloading tabs
  * @type Array
  */

@@ -1,4 +1,14 @@
 /**
+ * @file content.js
+ * @author psykhi (alex@theboredengineers.com)
+ * @date March 2015
+ * @brief Content script
+ * 
+ * The script takes care of reloading the page and appending the new messages to
+ * the page. Notifications are sent if the tab is not visible
+ */
+
+/**
  * Our refresh timer
  * @type type
  */
@@ -73,7 +83,6 @@ chrome.extension.onMessage.addListener(
 );
 /*************************END OF SCRIPT****************************/
 
-
 /**
  * @brief Callback when new options are available
  * @param {type} opt
@@ -89,9 +98,6 @@ function onNewOptions(opt)
     }
     notificationsEnable(options.notifications_enabled);
 }
-
-
-
 
 /**
  * @brief Asks the background page id the tab is visible
@@ -161,9 +167,6 @@ function goToNextPage(html)
                 options: options
             };
     chrome.runtime.sendMessage(request);
-
-
-
 }
 /**
  * @brief Refreshes the page

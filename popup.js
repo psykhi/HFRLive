@@ -1,4 +1,14 @@
 /**
+ * @file popup.js
+ * @author psykhi (alex@theboredengineers.com)
+ * @date March 2015
+ * @brief Popup window script
+ * 
+ * Javascript of popup.html. 
+ */
+
+
+/**
  * Our tabId
  * @type Number
  */
