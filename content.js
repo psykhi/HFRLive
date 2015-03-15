@@ -1,11 +1,22 @@
-
-
+/**
+ * Our refresh timer
+ * @type type
+ */
 var timer;
+/**
+ * Are we visible? Updated each second
+ * @type isSelected|Boolean
+ */
 var is_selected = false;
+/**
+ * Our tab id
+ * @type Number
+ */
 var tabid = -1;
-console.log("Content loaded");
-
-
+/**
+ * Our tab options
+ * @type opt|@exp;message@pro;options
+ */
 var options =
         {
             refresh_enabled: false,
@@ -13,54 +24,82 @@ var options =
             notifications_enabled: false
         };
 
+/***********************SCRIPT************************************/
 
+// Are we new? Or just refreshed?
+chrome.runtime.sendMessage({get_options: true}, function(response) {
+    if (response.options)
+    {
+        onNewOptions(response.options);
+    }
+    else if (response.new )
+    {
+        /*We are a new tab*/
+    }
+});
+//We'll check if we're visible every second
+setInterval(checkIfSelected, 1000);
 
 chrome.extension.onMessage.addListener(
         function(message, sender, sendResponse)
         {
-            console.log(message);
             if (message.options)
             {
                 options = message.options;
-                console.log("options set");
-                console.log(options.notifications_enabled);
             }
-            if (message === "start")
+            if (message.start)
             {
-                console.log("got start message");
                 startAutoRefresh();
-                sendResponse(options.refresh_enabled);
+                sendResponse(options);
             }
-            else if (message === "stop")
+            else if (message.stop)
             {
-                console.log("got stop message");
                 stopAutoRefresh();
-                sendResponse(options.refresh_enabled);
+                sendResponse(options);
             }
-            else if (message === "get_state")
+            else if (message.get_options)
             {
-                console.log(options.refresh_enabled);
-                sendResponse(options.refresh_enabled);
+                sendResponse(options);
             }
-            else if (message === "disable_notifications")
+            else if (message.disable_notifications)
             {
                 notificationsEnable(false);
             }
-            else if (message === "enable_notifications")
+            else if (message.enable_notifications)
             {
                 notificationsEnable(true);
             }
         }
 );
+/*************************END OF SCRIPT****************************/
 
-setInterval(check_if_selected, 1000);
+
+/**
+ * @brief Callback when new options are available
+ * @param {type} opt
+ * @returns {undefined}
+ */
+function onNewOptions(opt)
+{
+    options = opt;
+
+    if (options.refresh_enabled)
+    {
+        startAutoRefresh();
+    }
+    notificationsEnable(options.notifications_enabled);
+}
+
+
+
+
 /**
  * @brief Asks the background page id the tab is visible
  * @returns nothing /ASYNC
  */
-function check_if_selected()
+function checkIfSelected()
 {
-    chrome.runtime.sendMessage("is_selected", function(isSelected) {
+    chrome.runtime.sendMessage({is_selected: true}, function(isSelected) {
         is_selected = isSelected;
     });
 }
@@ -132,7 +171,7 @@ function goToNextPage(html)
  */
 function refresh()
 {
-    console.log("refreshing");
+    //console.log("refreshing");
 //We look where the last message is
     var page_len = $(".messagetable").length;
     $.get(document.URL, function(data)
@@ -146,7 +185,6 @@ function refresh()
         var last_page = getLatestPageIndex(html);
         if (current_page !== last_page)
         {
-            console.log("page " + current_page + " vs new " + last_page);
             goToNextPage(html);
             return;
         }
@@ -182,7 +220,6 @@ function buildNotification(mess)
 {
     if (!is_selected)
     {
-        console.log("building notif");
         var messageText = mess.find(".messCase2").children("div:last").get(0).innerText;
         //var messageUrl = mess.find(".messCase1").children("div:first").find("img").get(0).src;
         var avatarUrl = mess.find(".messCase1").children("div:last").find("img").get(0).src;
@@ -194,23 +231,12 @@ function buildNotification(mess)
 }
 
 /**
- * @brief Main refresh loop
- * @returns {undefined}
- */
-function loop()
-{
-    if (options.refresh_enabled) {
-        refresh();
-    }
-}
-
-/**
  * Starts the refreshing loop
  * @returns {undefined}
  */
 function startAutoRefresh()
 {
-    timer = setInterval(loop, options.refresh_interval);
+    timer = setInterval(refresh, options.refresh_interval);
     options.refresh_enabled = true;
 }
 
@@ -232,7 +258,6 @@ function stopAutoRefresh()
 function notificationsEnable(state)
 {
     options.notifications_enabled = state;
-    console.log("notif " + state);
 }
 
 
