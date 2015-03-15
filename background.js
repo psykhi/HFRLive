@@ -15,8 +15,15 @@
  * @type Array
  */
 var tabsState = [];
-
+/**
+ * We keep track of the listener registration
+ * @type Boolean|Boolean
+ */
 var notif_op = false;
+/**
+ * Notificaiton callback url
+ * @type @exp;notif@pro;messageUrl
+ */
 var href_url;
 /***********************************SCRIPT************************************/
 // We show the page action icon
@@ -130,7 +137,6 @@ function displayNotification(notif, tabId)
         if (!notif_op)
         {
             notif_op = true;
-            console.log("creating listeners");
             chrome.notifications.onClicked.addListener(function()
             {
                 chrome.tabs.update(tabId, {selected: true});
