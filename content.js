@@ -38,6 +38,11 @@ var options =
             refresh_interval: 2000,
             notifications_enabled: false
         };
+/**
+ * We keep this variable so we know a previous refresh is not running
+ * @type Boolean|Boolean|Boolean
+ */
+var ready_to_refresh = true;
 
 /***********************SCRIPT************************************/
 
@@ -220,42 +225,62 @@ function refresh()
 {
     //console.log("refreshing");
 //We look where the last message is
-    var page_len = $(".messagetable").length;
-    $.get(document.URL, function(data)
-    {
-        // New page HTML
-        var html = $.parseHTML(data);
-        // Message count of current page
-        var mess_count = $(html).find(".messagetable").length;
-        var current_page = getCurrentPageIndex();
-        var last_page = getLatestPageIndex(html);
-        if (current_page !== last_page)
+    if (ready_to_refresh) {
+        ready_to_refresh = false;
+        var page_len = $(".messagetable").length;
+        $.get(document.URL, function(data)
         {
-            goToNextPage(html);
-            return;
-        }
-        if (mess_count !== page_len)
-        {
-            var target = $(".messagetable").last();
-            var message;
-            for (i = page_len; i < mess_count; i++)
-            {
-                //We append the new message
-                message = $(html).find(".messagetable").get(i);
-                appendMissingQuoteHref($(message));
-                $(".messagetable").last().after(message).fadeIn(1000);
+            try {
+                // New page HTML
+                var html = $.parseHTML(data);
+                // Message count of current page
+                var mess_table = $(html).find(".messagetable")
+                var mess_count = mess_table.length;
+                var current_page = getCurrentPageIndex();
+                var last_page = getLatestPageIndex(html);
+                if (current_page !== last_page)
+                {
+                    goToNextPage(html);
+                    return;
+                }
+                if (mess_count !== page_len)
+                {
+                    var target = $(".messagetable").last();
+                    var message;
+                    for (i = page_len; i < mess_count; i++)
+                    {
+                        //We append the new message
+                        message = mess_table.get(i);
+                        appendMissingQuoteHref($(message));
+                        $(".messagetable").last().after(message).fadeIn(1000);
+                    }
+
+                    //We notify the user
+                    buildNotification($(".messagetable").last());
+                    $('html, body').on("scroll mousedown DOMMouseScroll mousewheel keyup", function() {
+                        $('html, body').stop();
+                    });
+
+                    //We scroll to the last read message
+                    $('html, body').animate({
+                        scrollTop: target.offset().top
+                    }, 2000, function() {
+                        $('html, body').off("scroll mousedown DOMMouseScroll mousewheel keyup");
+                    });
+                }
+                ready_to_refresh = true;
             }
+            catch (err)
+            {
+                ready_to_refresh = true;
+            }
+        });
 
-            //We notify the user
-            buildNotification($(".messagetable").last());
-            //We scroll to the last read message
-            $('html, body').animate({
-                scrollTop: target.offset().top
-            }, 2000);
-        }
-    });
-
-
+    }
+    else
+    {
+        //console.log("not ready to refresh.");
+    }
 }
 /**
  * @brief Builds and send a notification if the notifications are active
@@ -268,11 +293,11 @@ function buildNotification(mess)
     {
         var messageText = mess.find(".messCase2").children("div:last").get(0).innerText;
         var messageUrl = getMessageLink(mess);
-        var avatarUrl = mess.find(".messCase1").children("div:last").find("img").get(0).src;
+        //var avatarUrl = mess.find(".messCase1").children("div:last").find("img").get(0).src;
         var pseudo = mess.find(".messCase1").find(".s2").get(0).innerText;
 
         if (options.notifications_enabled)
-            sendNotification(messageText, avatarUrl, pseudo, messageUrl);
+            sendNotification(messageText, "", pseudo, messageUrl);
     }
 }
 

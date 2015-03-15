@@ -104,9 +104,6 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 });
 /*****************************END OF SCRIPT************************************/
 
-
-
-
 /**
  * @brief Displays a notification
  * @param {type} notif
