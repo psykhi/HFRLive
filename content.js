@@ -237,7 +237,7 @@ function buildNotification(mess)
 function startAutoRefresh()
 {
     timer = setInterval(refresh, options.refresh_interval);
-    options.refresh_enabled = true;
+    setOption({refresh_enabled: true});
 }
 
 /**
@@ -247,7 +247,7 @@ function startAutoRefresh()
 function stopAutoRefresh()
 {
     clearInterval(timer);
-    options.refresh_enabled = false;
+    setOption({refresh_enabled: false});
 }
 
 /**
@@ -257,10 +257,26 @@ function stopAutoRefresh()
  */
 function notificationsEnable(state)
 {
-    options.notifications_enabled = state;
+    setOption({notifications_enabled: state});
 }
 
-
+/**
+ * Set an option and publish the new values
+ * @param {type} opt
+ * @returns {undefined}
+ */
+function setOption(opt)
+{
+    if (typeof opt.refresh_enabled !== 'undefined')
+    {
+        options.refresh_enabled = opt.refresh_enabled;
+    }
+    if (typeof opt.notifications_enabled !== 'undefined')
+    {
+        options.notifications_enabled = opt.notifications_enabled;
+    }
+    chrome.runtime.sendMessage({save_options: options});
+}
 
 
 

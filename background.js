@@ -75,6 +75,10 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             chrome.tabs.update(sender.tab.id, {url: request.redirect});
         }
     }
+    if (request.save_options)
+    {
+        tabsState[sender.tab.id] = request.save_options;
+    }
     return true;
 });
 /*****************************END OF SCRIPT************************************/
@@ -98,8 +102,8 @@ function displayNotification(notif, tabId)
                 title: notif.pseudo,
                 //We remove the potential signature
                 message: notif.message.split("---------------")[0]
-                //buttons: [{
-                //          title: "Répondre"}]
+                        //buttons: [{
+                        //          title: "Répondre"}]
             };
 //We display it (we remove the previous if there was any
     chrome.notifications.clear("HFR", function()
