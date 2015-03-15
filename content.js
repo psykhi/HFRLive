@@ -24,6 +24,11 @@ var is_selected = false;
  */
 var tabid = -1;
 /**
+ * String that holds the template href to add to the response button
+ * @type type
+ */
+var href_string;
+/**
  * Our tab options
  * @type opt|@exp;message@pro;options
  */
@@ -37,7 +42,7 @@ var options =
 /***********************SCRIPT************************************/
 
 // Are we new? Or just refreshed?
-chrome.runtime.sendMessage({get_options: true}, function(response) {
+chrome.runtime.sendMessage({get_options: true, get_url: true}, function(response) {
     if (response.options)
     {
         onNewOptions(response.options);
@@ -46,7 +51,14 @@ chrome.runtime.sendMessage({get_options: true}, function(response) {
     {
         /*We are a new tab*/
     }
+    //We save the href template to respond to a message
+    href_string = getElementByXpath
+            ('//*[@id="mesdiscussions"]/table[3]/tbody/tr/td[2]/div[1]/div[1]/span/a/a').
+            href;
+    href_string = href_string.replace(/numrep=(.*?)&/, "numrep=trav&");
+
 });
+
 //We'll check if we're visible every second
 setInterval(checkIfSelected, 1000);
 
@@ -84,6 +96,15 @@ chrome.extension.onMessage.addListener(
 /*************************END OF SCRIPT****************************/
 
 /**
+ * @brief Finds an element in the document from its xPATH
+ * @param {type} path
+ * @returns 
+ */
+function getElementByXpath(path) {
+    return document.evaluate(path, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+}
+
+/**
  * @brief Callback when new options are available
  * @param {type} opt
  * @returns {undefined}
@@ -115,15 +136,17 @@ function checkIfSelected()
  * @param {type} content 
  * @param {type} avatar
  * @param {type} pseudo
+ * @param {type} url
  * @returns {undefined}
  */
-function sendNotification(content, avatar, pseudo)
+function sendNotification(content, avatar, pseudo, url)
 {
     var notif =
             {
                 message: content,
                 avatarUrl: avatar,
-                pseudo: pseudo
+                pseudo: pseudo,
+                messageUrl: url
             };
 
     var request =
@@ -168,6 +191,27 @@ function goToNextPage(html)
             };
     chrome.runtime.sendMessage(request);
 }
+
+/**
+ * @brief Finds the URL to a given message
+ * @param {type} message
+ * @returns {@exp;href_string@call;replace}
+ */
+function getMessageLink(message)
+{
+    var message_value = message.find('a[href^="#t"]').get(0).hash.substring(2);
+    return href_string.replace("trav", message_value);
+}
+/**
+ * @brief Fixes the missing href link for the reply button
+ * @param {type} message
+ * @returns {undefined}
+ */
+function appendMissingQuoteHref(message)
+{
+    var to_modify = $(message).find('img[src="http://forum-images.hardware.fr/themes_static/images_forum/1/quote.gif"]').get(0);
+    $(to_modify).wrap('<a href ="' + getMessageLink(message) + '"></a>');
+}
 /**
  * @brief Refreshes the page
  * @returns {undefined}
@@ -183,7 +227,6 @@ function refresh()
         var html = $.parseHTML(data);
         // Message count of current page
         var mess_count = $(html).find(".messagetable").length;
-
         var current_page = getCurrentPageIndex();
         var last_page = getLatestPageIndex(html);
         if (current_page !== last_page)
@@ -195,11 +238,11 @@ function refresh()
         {
             var target = $(".messagetable").last();
             var message;
-
             for (i = page_len; i < mess_count; i++)
             {
                 //We append the new message
                 message = $(html).find(".messagetable").get(i);
+                appendMissingQuoteHref($(message));
                 $(".messagetable").last().after(message).fadeIn(1000);
             }
 
@@ -224,12 +267,12 @@ function buildNotification(mess)
     if (!is_selected)
     {
         var messageText = mess.find(".messCase2").children("div:last").get(0).innerText;
-        //var messageUrl = mess.find(".messCase1").children("div:first").find("img").get(0).src;
+        var messageUrl = getMessageLink(mess);
         var avatarUrl = mess.find(".messCase1").children("div:last").find("img").get(0).src;
         var pseudo = mess.find(".messCase1").find(".s2").get(0).innerText;
 
         if (options.notifications_enabled)
-            sendNotification(messageText, avatarUrl, pseudo);
+            sendNotification(messageText, avatarUrl, pseudo, messageUrl);
     }
 }
 

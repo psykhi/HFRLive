@@ -113,9 +113,9 @@ function displayNotification(notif, tabId)
                 iconUrl: "images/icon_80.png",
                 title: notif.pseudo,
                 //We remove the potential signature
-                message: notif.message.split("---------------")[0]
-                        //buttons: [{
-                        //          title: "Répondre"}]
+                message: notif.message.split("---------------")[0],
+                buttons: [{
+                        title: "Répondre"}]
             };
 //We display it (we remove the previous if there was any
     chrome.notifications.clear("HFR", function()
@@ -126,6 +126,12 @@ function displayNotification(notif, tabId)
                 chrome.tabs.update(tabId, {selected: true});
 
             });
+            // We link the "Reply" button to the message
+            chrome.notifications.onButtonClicked.addListener(function(id, index)
+            {
+                chrome.tabs.create({url: notif.messageUrl, active: true});
+            });
+
         });
     });
 }
