@@ -121,14 +121,12 @@ function displayNotification(notif, tabId)
                 //We remove the potential signature
                 message: notif.message.split("---------------")[0],
                 buttons: [{
-                        title: "Répondre"}],
+                        title: "Répondre"}, {title: "Stop live"}],
                 isClickable: true,
-                contextMessage : "En réponse à "+notif.quote
+                contextMessage: notif.quote
             };
 
 //We display it (we remove the previous if there was any
-
-
     chrome.notifications.create("", opt, function() {
 
         href_url = notif.messageUrl;
@@ -138,12 +136,21 @@ function displayNotification(notif, tabId)
             chrome.notifications.onClicked.addListener(function()
             {
                 chrome.tabs.update(tabId, {selected: true});
-
             });
             // We link the "Reply" button to the message
             chrome.notifications.onButtonClicked.addListener(function(id, index)
             {
-                chrome.tabs.create({url: href_url, active: true});
+                switch (id)
+                {
+                    case 0://Open reply window
+                        chrome.tabs.create({url: href_url, active: true});
+                        break;
+                    case 1://Stops the live refresh
+                        chrome.tabs.sendMessage(tabId, {stop: true});
+                        break;
+                    default:
+                        break;
+                }
             });
         }
     });
