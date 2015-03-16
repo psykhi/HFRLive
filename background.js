@@ -122,7 +122,8 @@ function displayNotification(notif, tabId)
                 message: notif.message.split("---------------")[0],
                 buttons: [{
                         title: "Répondre"}],
-                isClickable: true
+                isClickable: true,
+                contextMessage : "En réponse à "+notif.quote
             };
 
 //We display it (we remove the previous if there was any

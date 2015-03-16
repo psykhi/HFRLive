@@ -47,12 +47,12 @@ var ready_to_refresh = true;
 /***********************SCRIPT************************************/
 
 // Are we new? Or just refreshed?
-chrome.runtime.sendMessage({get_options: true, get_url: true}, function(response) {
+chrome.runtime.sendMessage({get_options: true, get_url: true}, function (response) {
     if (response.options)
     {
         onNewOptions(response.options);
     }
-    else if (response.new )
+    else if (response.new)
     {
         /*We are a new tab*/
     }
@@ -68,7 +68,7 @@ chrome.runtime.sendMessage({get_options: true, get_url: true}, function(response
 setInterval(checkIfSelected, 1000);
 
 chrome.extension.onMessage.addListener(
-        function(message, sender, sendResponse)
+        function (message, sender, sendResponse)
         {
             if (message.options)
             {
@@ -131,7 +131,7 @@ function onNewOptions(opt)
  */
 function checkIfSelected()
 {
-    chrome.runtime.sendMessage({is_selected: true}, function(isSelected) {
+    chrome.runtime.sendMessage({is_selected: true}, function (isSelected) {
         is_selected = isSelected;
     });
 }
@@ -144,14 +144,15 @@ function checkIfSelected()
  * @param {type} url
  * @returns {undefined}
  */
-function sendNotification(content, avatar, pseudo, url)
+function sendNotification(content, avatar, pseudo, url, quote_author)
 {
     var notif =
             {
                 message: content,
                 avatarUrl: avatar,
                 pseudo: pseudo,
-                messageUrl: url
+                messageUrl: url,
+                quote: quote_author
             };
 
     var request =
@@ -228,7 +229,7 @@ function refresh()
     if (ready_to_refresh) {
         ready_to_refresh = false;
         var page_len = $(".messagetable").length;
-        $.get(document.URL, function(data)
+        $.get(document.URL, function (data)
         {
             try {
                 // New page HTML
@@ -257,14 +258,14 @@ function refresh()
 
                     //We notify the user
                     buildNotification($(".messagetable").last());
-                    $('html, body').on("scroll mousedown DOMMouseScroll mousewheel keyup", function() {
+                    $('html, body').on("scroll mousedown DOMMouseScroll mousewheel keyup", function () {
                         $('html, body').stop();
                     });
 
                     //We scroll to the last read message
                     $('html, body').animate({
                         scrollTop: target.offset().top
-                    }, 2000, function() {
+                    }, 2000, function () {
                         $('html, body').off("scroll mousedown DOMMouseScroll mousewheel keyup");
                     });
                 }
@@ -282,6 +283,30 @@ function refresh()
         //console.log("not ready to refresh.");
     }
 }
+
+function messageHasAQuote(message)
+{
+    try {
+        var quotes = message.find(".citation");
+        if (typeof quotes !== 'undefined')
+        {
+            console.log(quotes.get(0).innerText.split(" a écrit"));
+            return quotes.get(0).innerText.split(" a écrit")[0];
+        }
+        else
+            return "";
+    }
+    catch (err)
+    {
+        return "";
+    }
+}
+
+function formatNotificationText(message)
+{
+    return message.remove(".citation").find(".messCase2").children("div:last").get(0).innerText.replace(/^\s*\n/gm, "");
+    ;
+}
 /**
  * @brief Builds and send a notification if the notifications are active
  * @param {type} mess
@@ -289,15 +314,17 @@ function refresh()
  */
 function buildNotification(mess)
 {
-    if (!is_selected)
+    if ((!is_selected) && options.notifications_enabled)
     {
-        var messageText = mess.find(".messCase2").children("div:last").get(0).innerText;
+        var respondsTo = messageHasAQuote(mess);
+        console.log(respondsTo);
+
+        var messageText = formatNotificationText(mess);
+
         var messageUrl = getMessageLink(mess);
         //var avatarUrl = mess.find(".messCase1").children("div:last").find("img").get(0).src;
         var pseudo = mess.find(".messCase1").find(".s2").get(0).innerText;
-
-        if (options.notifications_enabled)
-            sendNotification(messageText, "", pseudo, messageUrl);
+        sendNotification(messageText, "", pseudo, messageUrl, respondsTo);
     }
 }
 
