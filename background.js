@@ -58,7 +58,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     }
     if (request.notification)
     {
-        displayNotification(request.notification, sender.tab.id);
+        displayNotification(request.notification, sender.tab.id, sender.tab.windowId);
     }
     if (request.get_options)
     {
@@ -110,7 +110,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
  * @param {type} tabId
  * @returns {undefined}
  */
-function displayNotification(notif, tabId)
+function displayNotification(notif, tabId, windowId)
 {
     //We prepare the notification
     var opt =
@@ -135,6 +135,7 @@ function displayNotification(notif, tabId)
             notif_op = true;
             chrome.notifications.onClicked.addListener(function()
             {
+                chrome.windows.update(windowId, {focused: true});
                 chrome.tabs.update(tabId, {selected: true});
             });
             // We link the "Reply" button to the message
@@ -147,6 +148,8 @@ function displayNotification(notif, tabId)
                         break;
                     case 1://Stops the live refresh
                         chrome.tabs.sendMessage(tabId, {stop: true});
+                        chrome.pageAction.setIcon({tabId: tabId,
+                            path: "images/icon_16.png"});
                         break;
                     default:
                         break;
@@ -154,6 +157,4 @@ function displayNotification(notif, tabId)
             });
         }
     });
-
-
 }
