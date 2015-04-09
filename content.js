@@ -36,7 +36,8 @@ var options =
         {
             refresh_enabled: false,
             refresh_interval: 2000,
-            notifications_enabled: false
+            notifications_enabled: false,
+            scroll_duration: 1000
         };
 /**
  * We keep this variable so we know a previous refresh is not running
@@ -44,7 +45,9 @@ var options =
  */
 var ready_to_refresh = true;
 
+
 /***********************SCRIPT************************************/
+
 
 // Are we new? Or just refreshed?
 chrome.runtime.sendMessage({get_options: true, get_url: true}, function(response) {
@@ -55,6 +58,7 @@ chrome.runtime.sendMessage({get_options: true, get_url: true}, function(response
     else if (response.new )
     {
         /*We are a new tab*/
+        //FIXME send notification for the second message
     }
     //We save the href template to respond to a message
     href_string = getElementByXpath
@@ -64,10 +68,12 @@ chrome.runtime.sendMessage({get_options: true, get_url: true}, function(response
 
 });
 
+loadOptionsFromStorage();
 //We'll check if we're visible every second
 setInterval(checkIfSelected, 1000);
 
-chrome.extension.onMessage.addListener(
+
+chrome.runtime.onMessage.addListener(
         function(message, sender, sendResponse)
         {
             if (message.options)
@@ -96,10 +102,45 @@ chrome.extension.onMessage.addListener(
             {
                 notificationsEnable(true);
             }
+            else if (message.new_options)
+            {
+                registerNewOptions(message.new_options);
+            }
         }
 );
 /*************************END OF SCRIPT****************************/
 
+function loadOptionsFromStorage()
+{
+    chrome.storage.sync.get({
+        delay_refresh: '2000',
+        scroll_duration: 1000
+    }, function(items) {
+        options.refresh_interval = items.delay_refresh;
+        options.scroll_duration = items.scroll_duration;
+    });
+
+}
+
+function registerNewOptions(opt)
+{
+    console.log(opt);
+    if (opt.new_refresh_delay)
+    {
+        changeRefreshInterval(opt.new_refresh_delay);
+    }
+    if (opt.new_scroll_duration)
+    {
+        options.scroll_duration = opt.new_scroll_duration;
+    }
+}
+
+function changeRefreshInterval(val)
+{
+    options.refresh_interval = val;
+    clearInterval(timer);
+    timer = setInterval(options.refresh_interval);
+}
 /**
  * @brief Finds an element in the document from its xPATH
  * @param {type} path
@@ -142,6 +183,7 @@ function checkIfSelected()
  * @param {type} avatar
  * @param {type} pseudo
  * @param {type} url
+ * @param quote_author 
  * @returns {undefined}
  */
 function sendNotification(content, avatar, pseudo, url, quote_author)
@@ -208,8 +250,13 @@ function goToNextPage(html)
  */
 function getMessageLink(message)
 {
-    var message_value = message.find('a[href^="#t"]').get(0).hash.substring(2);
+    var message_value = getMessageId(message);
     return href_string.replace("trav", message_value);
+}
+
+function getMessageId(message)
+{
+    return message.find('a[href^="#t"]').get(0).hash.substring(2);
 }
 /**
  * @brief Fixes the missing href link for the reply button
@@ -238,7 +285,7 @@ function refresh()
                 // New page HTML
                 var html = $.parseHTML(data);
                 // Message count of current page
-                var mess_table = $(html).find(".messagetable")
+                var mess_table = $(html).find(".messagetable");
                 var mess_count = mess_table.length;
                 var current_page = getCurrentPageIndex();
                 var last_page = getLatestPageIndex(html);
@@ -256,26 +303,34 @@ function refresh()
                         //We append the new message
                         message = mess_table.get(i);
                         appendMissingQuoteHref($(message));
-                        $(".messagetable").last().after(message).fadeIn(1000);
-                    }
+                        $(".messagetable").last().after(message).fadeIn(options.scroll_duration);
 
+                    }
+                    // We change the quick response link
+                    updateQuickResponse($(".messagetable").last());
                     //We notify the user
                     buildNotification($(".messagetable").last());
                     $('html, body').on("scroll mousedown DOMMouseScroll mousewheel keyup", function() {
                         $('html, body').stop();
                     });
-
-                    //We scroll to the last read message
-                    $('html, body').animate({
-                        scrollTop: target.offset().top
-                    }, 2000, function() {
-                        $('html, body').off("scroll mousedown DOMMouseScroll mousewheel keyup");
-                    });
+                    if (options.scroll_duration === 0)
+                    {
+                        window.moveTo(window.screenX, target.offset().top);
+                    } else
+                    {
+                        //We scroll to the last read message
+                        $('html, body').animate({
+                            scrollTop: target.offset().top
+                        }, options.scroll_duration, function() {
+                            $('html, body').off("scroll mousedown DOMMouseScroll mousewheel keyup");
+                        });
+                    }
                 }
                 ready_to_refresh = true;
             }
             catch (err)
             {
+                //console.log(err.stack);
                 ready_to_refresh = true;
             }
         });
@@ -285,6 +340,16 @@ function refresh()
     {
         //console.log("not ready to refresh.");
     }
+}
+/**
+ * Updates the quick response POST numrep attribute 
+ * @param {type} message
+ * @returns {undefined} */
+function updateQuickResponse(message)
+{
+    var id = getMessageId(message);
+    var html = getElementByXpath('//*[@id="md_fast_search"]/input[4]');
+    html.value = id;
 }
 
 /**
@@ -371,6 +436,8 @@ function stopAutoRefresh()
 {
     clearInterval(timer);
     setOption({refresh_enabled: false});
+    /* We reload the options if they have changed since the last session */
+    loadOptionsFromStorage();
 }
 
 /**

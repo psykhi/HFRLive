@@ -40,7 +40,12 @@ document.addEventListener('DOMContentLoaded', function() {
     button.addEventListener('click', onRefreshButtonClicked);
     document.getElementById("checkbox_notifications").addEventListener('change',
             onNotificationCheckboxChange);
-
+/* Option link */
+window.addEventListener('click',function(e){
+  if(e.target.href!==undefined){
+    chrome.tabs.create({url:e.target.href})
+  }
+})
     getCurrentTabUrl(function(tab) {
         chrome.tabs.sendMessage(tabid, {get_options: true}, onNewOptions);
     });

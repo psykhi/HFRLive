@@ -1,0 +1,32 @@
+
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Options HFR Live</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <style>
+            body: { padding: 10px; }
+        </style>
+    </head>
+    <body>
+        <div>
+            <label>Temps entre deux rafraîchisssements
+                <input id="delay_refresh" type="range" min="2" max="60"/>
+
+            </label>
+            <output id="delay_refresh_text">0</output>
+        </div>
+        <div>
+            <label>Durée du scroll vers les nouveaux
+                messages (en ms)
+                <input id ="scroll_duration" step="50" type="range"  min="0" max="5000" />
+
+            </label>
+            <output id="scroll_duration_text">0</output>
+        </div>
+        <div id="status"></div>
+        <button id="save">Save</button>
+
+        <script src="options.js"></script>
+    </body>
+</html>

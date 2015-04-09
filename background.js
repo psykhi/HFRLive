@@ -25,7 +25,23 @@ var notif_op = false;
  * @type @exp;notif@pro;messageUrl
  */
 var href_url;
-/***********************************SCRIPT************************************/
+/***********************************SCRIPT*************************************/
+//Google analytics
+var manifest = chrome.runtime.getManifest();
+var _gaq = _gaq || [];
+_gaq.push(['_setAccount', 'UA-60766637-1']);
+_gaq.push(['_trackPageview']);
+_gaq.push(['_trackEvent', 'version', manifest.version]);
+
+(function() {
+    var ga = document.createElement('script');
+    ga.type = 'text/javascript';
+    ga.async = true;
+    ga.src = 'https://ssl.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0];
+    s.parentNode.insertBefore(ga, s);
+})();
+
 // We show the page action icon
 chrome.runtime.onInstalled.addListener(function() {
     chrome.declarativeContent.onPageChanged.removeRules(undefined, function() {
