@@ -1,6 +1,6 @@
 
 function updateTextInput(val) {
-    document.getElementById('delay_refresh_text').value = val/1000;
+    document.getElementById('delay_refresh_text').value = val / 1000;
 }
 
 
@@ -36,22 +36,30 @@ function onNewScrollDuration()
                     new_scroll_duration: newVal
                 }
             };
-    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-        chrome.tabs.sendMessage(tabs[0].id, newOpt);
+    chrome.tabs.query({url: 'http://forum.hardware.fr/*'}, function(tabs) {
+        console.log(tabs);
+        for (id = 0; id < tabs.length; id++)
+        {
+            chrome.tabs.sendMessage(tabs[id].id, newOpt);
+        }
     });
 }
 
 function onNewRefreshDelay()
 {
-    var newVal = document.getElementById('delay_refresh').value;
+    var newVal = document.getElementById('delay_refresh').value *1000;
     var newOpt =
             {
                 new_options: {
                     new_refresh_delay: newVal
                 }
             };
-    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-        chrome.tabs.sendMessage(tabs[0].id, newOpt);
+    chrome.tabs.query({url: 'http://forum.hardware.fr/*'}, function(tabs) {
+        console.log(tabs);
+        for (id = 0; id < tabs.length; id++)
+        {
+            chrome.tabs.sendMessage(tabs[id].id, newOpt);
+        }
     });
 }
 
@@ -62,9 +70,9 @@ function restore_options() {
         scroll_duration: 1000
     }, function(items) {
         document.getElementById('scroll_duration').value = items.scroll_duration;
-        document.getElementById('delay_refresh').value = items.delay_refresh/1000;
+        document.getElementById('delay_refresh').value = items.delay_refresh / 1000;
         document.getElementById('scroll_duration_text').value = items.scroll_duration + "ms";
-        document.getElementById('delay_refresh_text').value = items.delay_refresh/1000 + "s";
+        document.getElementById('delay_refresh_text').value = items.delay_refresh / 1000 + "s";
     });
 }
 
@@ -73,6 +81,7 @@ function save_options() {
     var scroll = document.getElementById('scroll_duration').value;
 
     console.log("SAVE");
+
     chrome.storage.sync.set({
         delay_refresh: delay,
         scroll_duration: scroll

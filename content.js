@@ -9,11 +9,6 @@
  */
 
 /**
- * Our refresh timer
- * @type type
- */
-var timer;
-/**
  * Are we visible? Updated each second
  * @type isSelected|Boolean
  */
@@ -48,23 +43,28 @@ var ready_to_refresh = true;
 
 /***********************SCRIPT************************************/
 
+//We save the href template to respond to a message
+href_string = getElementByXpath
+        ('//*[@id="mesdiscussions"]/table[3]/tbody/tr/td[2]/div[1]/div[1]/span/a/a').
+        href;
+href_string = href_string.replace(/numrep=(.*?)&/, "numrep=trav&");
 
 // Are we new? Or just refreshed?
 chrome.runtime.sendMessage({get_options: true, get_url: true}, function(response) {
     if (response.options)
     {
         onNewOptions(response.options);
+        if (options.refresh_enabled)
+            buildNotification($(".messagetable").last());
     }
     else if (response.new )
     {
         /*We are a new tab*/
-        //FIXME send notification for the second message
+
+
+
     }
-    //We save the href template to respond to a message
-    href_string = getElementByXpath
-            ('//*[@id="mesdiscussions"]/table[3]/tbody/tr/td[2]/div[1]/div[1]/span/a/a').
-            href;
-    href_string = href_string.replace(/numrep=(.*?)&/, "numrep=trav&");
+
 
 });
 
@@ -76,6 +76,7 @@ setInterval(checkIfSelected, 1000);
 chrome.runtime.onMessage.addListener(
         function(message, sender, sendResponse)
         {
+            console.log(message);
             if (message.options)
             {
                 options = message.options;
@@ -138,8 +139,7 @@ function registerNewOptions(opt)
 function changeRefreshInterval(val)
 {
     options.refresh_interval = val;
-    clearInterval(timer);
-    timer = setInterval(options.refresh_interval);
+
 }
 /**
  * @brief Finds an element in the document from its xPATH
@@ -274,9 +274,9 @@ function appendMissingQuoteHref(message)
  */
 function refresh()
 {
-    //console.log("refreshing");
-//We look where the last message is
-    if (ready_to_refresh) {
+// Should we refresh?
+    if (ready_to_refresh && options.refresh_enabled) {
+        console.log("refreshing");
         ready_to_refresh = false;
         var page_len = $(".messagetable").length;
         $.get(document.URL, function(data)
@@ -330,7 +330,7 @@ function refresh()
             }
             catch (err)
             {
-                //console.log(err.stack);
+                console.log(err.stack);
                 ready_to_refresh = true;
             }
         });
@@ -338,8 +338,11 @@ function refresh()
     }
     else
     {
+
         //console.log("not ready to refresh.");
     }
+    if (options.refresh_enabled)
+        setTimeout(refresh, options.refresh_interval);
 }
 /**
  * Updates the quick response POST numrep attribute 
@@ -413,7 +416,7 @@ function buildNotification(mess)
         }
         catch (err)
         {
-
+            console.log(err.stack);
         }
     }
 }
@@ -424,7 +427,7 @@ function buildNotification(mess)
  */
 function startAutoRefresh()
 {
-    timer = setInterval(refresh, options.refresh_interval);
+    timer = setTimeout(refresh, options.refresh_interval);
     setOption({refresh_enabled: true});
 }
 
@@ -434,7 +437,6 @@ function startAutoRefresh()
  */
 function stopAutoRefresh()
 {
-    clearInterval(timer);
     setOption({refresh_enabled: false});
     /* We reload the options if they have changed since the last session */
     loadOptionsFromStorage();

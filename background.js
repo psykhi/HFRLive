@@ -10,21 +10,18 @@
  */
 
 
-/**
- * Our array where we keep the state of reloading tabs
- * @type Array
- */
-var tabsState = [];
-/**
- * We keep track of the listener registration
- * @type Boolean|Boolean
- */
-var notif_op = false;
-/**
- * Notificaiton callback url
- * @type @exp;notif@pro;messageUrl
- */
-var href_url;
+
+var Context =
+        {
+            /**
+             * Our array where we keep the state of reloading tabs
+             * @type Array
+             */
+            tabsState: [],
+            notifications: [],
+            notif_op : false
+        };
+
 /***********************************SCRIPT*************************************/
 //Google analytics
 var manifest = chrome.runtime.getManifest();
@@ -79,21 +76,21 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     if (request.get_options)
     {
         //A tab has been reloaded and ias asking for its state(new or refreshed)
-        if (tabsState[sender.tab.id])
+        if (Context.tabsState[sender.tab.id])
         {
             // The tab has been refreshed, we send it its state
-            sendResponse({options: tabsState[sender.tab.id]});
-            if (tabsState[sender.tab.id].refresh_enabled)
+            sendResponse({options: Context.tabsState[sender.tab.id]});
+            if (Context.tabsState[sender.tab.id].refresh_enabled)
             {
                 chrome.pageAction.setIcon({tabId: sender.tab.id,
                     path: "images/icon_16_on.png"});
             }
 
             // We remove the element from our tabsState array
-            var idx = tabsState.indexOf(sender.tab.id);
+            var idx = Context.tabsState.indexOf(sender.tab.id);
             if (idx > -1)
             {
-                tabsState.splice(idx, 1);
+                Context.tabsState.splice(idx, 1);
             }
         }
         else
@@ -108,13 +105,13 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         if (request.options)
         {
             // We save its options
-            tabsState[sender.tab.id] = request.options;
+            Context.tabsState[sender.tab.id] = request.options;
             chrome.tabs.update(sender.tab.id, {url: request.redirect});
         }
     }
     if (request.save_options)
     {
-        tabsState[sender.tab.id] = request.save_options;
+        Context.tabsState[sender.tab.id] = request.save_options;
     }
     return true;
 });
@@ -124,10 +121,12 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
  * @brief Displays a notification
  * @param {type} notif
  * @param {type} tabId
+ * @param {type} windowId window ID
  * @returns {undefined}
  */
 function displayNotification(notif, tabId, windowId)
 {
+
     //We prepare the notification
     var opt =
             {
@@ -137,34 +136,46 @@ function displayNotification(notif, tabId, windowId)
                 //We remove the potential signature
                 message: notif.message.split("---------------")[0],
                 buttons: [{
-                        title: "Répondre"}, {title: "Stop live"}],
+                        title: "Répondre"}, {title: "Arrêter le live"}],
                 isClickable: true,
                 contextMessage: notif.quote
             };
 
 //We display it (we remove the previous if there was any
-    chrome.notifications.create("", opt, function() {
+    chrome.notifications.create("", opt, function(id) {
 
-        href_url = notif.messageUrl;
-        if (!notif_op)
+        console.log(Context);
+        if (!Context.notifications[id])
         {
-            notif_op = true;
-            chrome.notifications.onClicked.addListener(function()
+            console.log()
+            Context.notifications[id] = new Object();
+            Context.notifications[id].tab_id = 0;
+            Context.notifications[id].window_id = 0;
+            Context.notifications[id].href_url = "";
+        }
+        Context.notifications[id].tab_id = tabId;
+        Context.notifications[id].window_id = windowId;
+        Context.notifications[id].href_url = notif.messageUrl;
+
+        if (!Context.notif_op)
+        {
+            Context.notif_op = true;
+            chrome.notifications.onClicked.addListener(function(notif_id)
             {
-                chrome.windows.update(windowId, {focused: true});
-                chrome.tabs.update(tabId, {selected: true});
+                chrome.windows.update(Context.notifications[notif_id].window_id, {focused: true});
+                chrome.tabs.update(Context.notifications[notif_id].tab_id, {selected: true});
             });
             // We link the "Reply" button to the message
-            chrome.notifications.onButtonClicked.addListener(function(id, index)
+            chrome.notifications.onButtonClicked.addListener(function(notif_id, index)
             {
-                switch (id)
+                switch (index)
                 {
                     case 0://Open reply window
-                        chrome.tabs.create({url: href_url, active: true});
+                        chrome.tabs.create({url: Context.notifications[notif_id].href_url, active: true});
                         break;
                     case 1://Stops the live refresh
-                        chrome.tabs.sendMessage(tabId, {stop: true});
-                        chrome.pageAction.setIcon({tabId: tabId,
+                        chrome.tabs.sendMessage(Context.notifications[notif_id].tab_id, {stop: true});
+                        chrome.pageAction.setIcon({tabId: Context.notifications[notif_id].tab_id,
                             path: "images/icon_16.png"});
                         break;
                     default:
