@@ -15,41 +15,53 @@
 var context;
 /***********************SCRIPT************************************/
 
-
 // Are we new? Or just refreshed? We ask for our context to the background page
-chrome.runtime.sendMessage({get_context: true}, function(response) {
-    console.log(response);
-    if (response.context)
-    {
-        context = response.context;
-        if (context.href_string === "")
+    chrome.runtime.sendMessage({get_context: true}, function(response) {
+
+        if (response.context)
         {
-            //We save the href template to respond to a message
-            context.href_string = getElementByXpath
-                    ('//*[@id="mesdiscussions"]/table[3]/tbody/tr/td[2]/div[1]/div[1]/span/a/a').
-                    href;
-            context.href_string = context.href_string.replace(/numrep=(.*?)&/, "numrep=trav&");
+            context = response.context;
+            context.ready_to_refresh = true;
+            if (context.href_string === "")
+            {
+//We save the href template to respond to a message
+                context.href_string = getElementByXpath
+                        ('//*[@id="mesdiscussions"]/table[3]/tbody/tr/td[2]/div[1]/div[1]/span/a/a').
+                        href;
+                context.href_string = context.href_string.replace(/numrep=(.*?)&/, "numrep=trav&");
+            }
+// We start refreshing or not
+            if (context.state.refresh_enabled)
+            {
+                console.log(context.current_page + 1);
+                var new_page = getCurrentPageIndex();
+                console.log(new_page);
+                //Now we will check if we are on a new page so that new_page = old page +1
+                if ((context.current_page + 1) === new_page)
+                {
+                    console.log("starting");
+                    startAutoRefresh();
+                }
+                else
+                {
+                    console.log("nope");
+                    stopAutoRefresh();
+                }
+            }
+
+
+            setMessageListener();
+            //FIXME if we are selected
+            context.current_page = getCurrentPageIndex();
+            console.log(context);
         }
-        // We start refreshing or not
-        if (context.state.refresh_enabled)
+        else
         {
-            startAutoRefresh();
+            /* Something wrong happened */
+            console.error("Could not get a context object !");
         }
+    });
 
-
-        setMessageListener();
-
-        //FIXME if we are selected
-        context.current_page = getCurrentPageIndex();
-        console.log(context);
-
-    }
-    else
-    {
-        /* Something wrong happened */
-        console.error("Could not get a context object !");
-    }
-});
 
 /*************************END OF SCRIPT****************************/
 
@@ -61,8 +73,10 @@ function setMessageListener()
                 console.log(message);
                 if (message.start)
                 {
+                        if (!context.state.refresh_enabled) {
                     startAutoRefresh();
                     sendResponse(context.state);
+                        }
                 }
                 else if (message.stop)
                 {
@@ -108,7 +122,6 @@ function registerNewOptions(opt)
 function changeRefreshInterval(val)
 {
     context.options.refresh_interval = val;
-
 }
 /**
  * @brief Finds an element in the document from its xPATH
@@ -127,7 +140,6 @@ function getElementByXpath(path) {
 function onNewOptions(opt)
 {
     context.options = opt;
-
     if (context.state.refresh_enabled)
     {
         startAutoRefresh();
@@ -161,7 +173,6 @@ function sendNotification(content, avatar, pseudo, url, quote_author)
                         messageUrl: url,
                         quote: quote_text
                     };
-
             var request =
                     {
                         notification: notif
@@ -178,7 +189,7 @@ function sendNotification(content, avatar, pseudo, url, quote_author)
  */
 function getCurrentPageIndex()
 {
-    return $(".cBackHeader").find("b:last").last().get(0).innerText;
+    return parseInt($(".cBackHeader").find("b:last").last().get(0).innerText);
 }
 /**
  * @brief Gets the latest page index
@@ -187,7 +198,7 @@ function getCurrentPageIndex()
  */
 function getLatestPageIndex(html)
 {
-    return $(html).find(".cBackHeader .left ").children().last().get(0).innerText;
+    return parseInt($(html).find(".cBackHeader .left ").children().last().get(0).innerText);
 }
 /**
  * @brief Goes to the next forum page
@@ -201,7 +212,7 @@ function goToNextPage(html)
     var request =
             {
                 redirect: url,
-                options: options
+                save_context: context
             };
     chrome.runtime.sendMessage(request);
 }
@@ -268,7 +279,6 @@ function refresh()
                         message = mess_table.get(i);
                         appendMissingQuoteHref($(message));
                         $(".messagetable").last().after(message).fadeIn(context.options.scroll_duration);
-
                     }
                     // We change the quick response link
                     updateQuickResponse($(".messagetable").last());
@@ -298,7 +308,6 @@ function refresh()
                 context.ready_to_refresh = true;
             }
         });
-
     }
     else
     {
@@ -391,10 +400,10 @@ function buildNotification(mess)
  */
 function startAutoRefresh()
 {
-    if (!context.state.refresh_enabled) {
+
         setTimeout(refresh, context.options.refresh_interval);
         setOption({refresh_enabled: true});
-    }
+    
 }
 
 /**

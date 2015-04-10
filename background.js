@@ -83,16 +83,21 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 // A tabs wants to change page
     if (request.redirect)
     {
-        if (request.options)
+        if (request.save_context)
         {
 // We save its options
-            Context.tabsState[sender.tab.id] = request.options;
+            Context.tabsState[sender.tab.id] = request.context;
             chrome.tabs.update(sender.tab.id, {url: request.redirect});
         }
     }
     if (request.save_context)
     {
         Context.tabsState[sender.tab.id] = request.save_context;
+        if (!Context.tabsState[sender.tab.id].state.refresh_enabled)
+            {
+                chrome.pageAction.setIcon({tabId: sender.tab.id,
+                    path: "images/icon_16_off.png"});
+            }
     }
     return true;
 });
@@ -178,6 +183,23 @@ function loadOptionsFromStorage(callback)
 
 }
 
+function convertImgToBase64(url, callback, outputFormat){
+	var canvas = document.createElement('CANVAS');
+	var ctx = canvas.getContext('2d');
+	var img = new Image;
+	img.crossOrigin = 'Anonymous';
+	img.onload = function(){
+		canvas.height = img.height;
+		canvas.width = img.width;
+	  	ctx.drawImage(img,0,0);
+	  	var dataURL = canvas.toDataURL(outputFormat || 'image/jpg');
+	  	callback.call(this, dataURL);
+        // Clean up
+	  	canvas = null; 
+	};
+	img.src = url;
+}
+
 /**
  * @brief Displays a notification
  * @param {type} notif
@@ -187,7 +209,9 @@ function loadOptionsFromStorage(callback)
  */
 function displayNotification(notif, tabId, windowId)
 {
-
+    convertImgToBase64(notif.avatarUrl,function(img){
+       console.log(img); 
+    });
     //We prepare the notification
     var opt =
             {
