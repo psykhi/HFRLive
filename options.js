@@ -29,7 +29,7 @@ function set_listeners()
 
 function onNewScrollDuration()
 {
-    var newVal = document.getElementById('scroll_duration').value;
+    var newVal = document.getElementById('scroll_duration').value*1;
     var newOpt =
             {
                 new_options: {
@@ -64,7 +64,6 @@ function onNewRefreshDelay()
 }
 
 function restore_options() {
-    console.log("RESTORE");
     chrome.storage.sync.get({
         delay_refresh: 2000,
         scroll_duration: 1000
@@ -78,9 +77,7 @@ function restore_options() {
 
 function save_options() {
     var delay = document.getElementById('delay_refresh').value * 1000;
-    var scroll = document.getElementById('scroll_duration').value;
-
-    console.log("SAVE");
+    var scroll = document.getElementById('scroll_duration').value*1;
 
     chrome.storage.sync.set({
         delay_refresh: delay,

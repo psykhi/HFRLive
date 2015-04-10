@@ -20,7 +20,9 @@ chrome.runtime.sendMessage({get_context: true}, function(response) {
 
     if (response.context)
     {
+        
         context = response.context;
+        //console.log(context);
         context.ready_to_refresh = true;
         if (context.href_string === "")
         {
@@ -46,6 +48,7 @@ chrome.runtime.sendMessage({get_context: true}, function(response) {
         }
 
         setMessageListener();
+        setQuickResponseFocusCallback();
         //FIXME if we are selected
         context.current_page = getCurrentPageIndex();
     }
@@ -59,6 +62,19 @@ chrome.runtime.sendMessage({get_context: true}, function(response) {
 
 /*************************END OF SCRIPT****************************/
 
+function setQuickResponseFocusCallback()
+{
+
+    $(".reponserapide").focusin(function(e)
+    {
+        context.should_scroll = false;
+    });
+    $(".reponserapide").focusout(function(e)
+    {
+        context.should_scroll = true;
+    });
+
+}
 function setMessageListener()
 {
     chrome.runtime.onMessage.addListener(
@@ -240,7 +256,7 @@ function appendMissingQuoteHref(message)
 function refresh()
 {
 // Should we refresh?
-    if (context.ready_to_refresh && context.state.refresh_enabled) {
+    if (context.ready_to_refresh && context.state.refresh_enabled && context.should_scroll) {
         //console.log("refreshing");
         context.ready_to_refresh = false;
         var page_len = $(".messagetable").length;
@@ -278,6 +294,7 @@ function refresh()
                     $('html, body').on("scroll mousedown DOMMouseScroll mousewheel keyup", function() {
                         $('html, body').stop();
                     });
+                    
                     if (context.options.scroll_duration === 0)
                     {
                         window.moveTo(window.screenX, target.offset().top);
@@ -362,7 +379,7 @@ function buildNotification(mess)
     if (context.options.notifications_enabled)
     {
         try {
-            var avatarUrl;
+            var avatarUrl ="";
             var respondsTo = messageHasAQuote(mess);
             var messageText = formatNotificationText(mess);
             var messageUrl = getMessageLink(mess);

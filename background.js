@@ -166,6 +166,7 @@ function ContentContext(options)
                 notifications_enabled: false
             };
     this.current_page = 0;
+    this.should_scroll = true;
 }
 ;
 
@@ -193,11 +194,13 @@ function convertImgToBase64(url, callback, outputFormat) {
         canvas_resized.width = 80;
         if (img.height > img.width)
         {
-            canvas_resized.getContext('2d').drawImage(img, 80 * (1 - (img.width / img.height)) / 2, 0, (img.width / img.height) * 80, 80);
+            canvas_resized.getContext('2d').drawImage(img, 80 * (1 - (img.width / img.height)) / 2,
+                    0, (img.width / img.height) * 80, 80);
         }
         else
         {
-            canvas_resized.getContext('2d').drawImage(img, 0, 80 * (1 - (img.height / img.width)) / 2, 80, (img.height / img.width) * 80);
+            canvas_resized.getContext('2d').drawImage(img, 0, 80 * (1 - (img.height / img.width)) / 2,
+                    80, (img.height / img.width) * 80);
 
         }
         var dataURL = canvas_resized.toDataURL(outputFormat || 'image/jpg');
