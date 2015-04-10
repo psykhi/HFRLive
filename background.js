@@ -96,7 +96,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         if (!Context.tabsState[sender.tab.id].state.refresh_enabled)
             {
                 chrome.pageAction.setIcon({tabId: sender.tab.id,
-                    path: "images/icon_16_off.png"});
+                    path: "images/icon_16.png"});
             }
     }
     return true;
