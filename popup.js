@@ -17,7 +17,7 @@ var tabid = 0;
  * Our tab options
  * @type option
  */
-var options;
+var state;
 
 /*********************************SCRIPT***************************************/
 //Google analytics
@@ -47,7 +47,7 @@ window.addEventListener('click',function(e){
   }
 })
     getCurrentTabUrl(function(tab) {
-        chrome.tabs.sendMessage(tabid, {get_options: true}, onNewOptions);
+        chrome.tabs.sendMessage(tabid, {get_state: true}, onNewState);
     });
 });
 
@@ -60,7 +60,7 @@ window.addEventListener('click',function(e){
 function onRefreshButtonClicked()
 {
 
-    if (options.refresh_enabled)
+    if (state.refresh_enabled)
     {
         sendContentScriptActivate(false);
     }
@@ -79,13 +79,13 @@ function sendContentScriptActivate(state)
 
     if (state)
     {
-        chrome.tabs.sendMessage(tabid, {start: true}, onNewOptions);
+        chrome.tabs.sendMessage(tabid, {start: true}, onNewState);
 
     }
     else
     {
         displayState(state);
-        chrome.tabs.sendMessage(tabid, {stop: true}, onNewOptions);
+        chrome.tabs.sendMessage(tabid, {stop: true}, onNewState);
     }
 }
 /**
@@ -133,11 +133,11 @@ function getCurrentTabUrl(callback) {
  * @param {type} option
  * @returns {undefined}
  */
-function onNewOptions(option)
+function onNewState(new_state)
 {
-    options = option;
-    displayState(option.refresh_enabled);
-    onNotificationStatusChange(option.notifications_enabled);
+    state = new_state;
+    displayState(state.refresh_enabled);
+    onNotificationStatusChange(state.notifications_enabled);
 }
 
 /**

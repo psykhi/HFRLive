@@ -19,9 +19,12 @@ var Context =
              */
             tabsState: [],
             notifications: [],
-            notif_op : false
+            notif_op: false,
+            options: {
+                refresh_interval: 4000,
+                scroll_duration: 1000
+            }
         };
-
 /***********************************SCRIPT*************************************/
 //Google analytics
 var manifest = chrome.runtime.getManifest();
@@ -29,7 +32,6 @@ var _gaq = _gaq || [];
 _gaq.push(['_setAccount', 'UA-60766637-1']);
 _gaq.push(['_trackPageview']);
 _gaq.push(['_trackEvent', 'version', manifest.version]);
-
 (function() {
     var ga = document.createElement('script');
     ga.type = 'text/javascript';
@@ -39,12 +41,13 @@ _gaq.push(['_trackEvent', 'version', manifest.version]);
     s.parentNode.insertBefore(ga, s);
 })();
 
+
 // We show the page action icon
 chrome.runtime.onInstalled.addListener(function() {
     chrome.declarativeContent.onPageChanged.removeRules(undefined, function() {
         chrome.declarativeContent.onPageChanged.addRules([
             {
-                // We check we're on the right website
+// We check we're on the right website
                 conditions: [
                     new chrome.declarativeContent.PageStateMatcher({
                         pageUrl: {urlMatches: 'forum\.hardware\.fr/forum2.php.|forum\.hardware\.fr/hfr/.'}
@@ -56,16 +59,16 @@ chrome.runtime.onInstalled.addListener(function() {
         ]);
     });
 });
-
 // We get ready to receive requests
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+    console.log(request);
     if (request.is_selected) {
         chrome.tabs.getSelected(null, function(tab) {
 
             if (tab.id === sender.tab.id) {
                 sendResponse(true); //in focus (selected)
             } else {
-                sendResponse(false);    //not in focus
+                sendResponse(false); //not in focus
             }
         });
     }
@@ -73,21 +76,46 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     {
         displayNotification(request.notification, sender.tab.id, sender.tab.windowId);
     }
-    if (request.get_options)
+    if (request.get_context)
     {
-        //A tab has been reloaded and ias asking for its state(new or refreshed)
-        if (Context.tabsState[sender.tab.id])
+        prepareContextForTab(sender.tab.id, sendResponse);
+    }
+// A tabs wants to change page
+    if (request.redirect)
+    {
+        if (request.options)
         {
-            // The tab has been refreshed, we send it its state
-            sendResponse({options: Context.tabsState[sender.tab.id]});
-            if (Context.tabsState[sender.tab.id].refresh_enabled)
+// We save its options
+            Context.tabsState[sender.tab.id] = request.options;
+            chrome.tabs.update(sender.tab.id, {url: request.redirect});
+        }
+    }
+    if (request.save_context)
+    {
+        Context.tabsState[sender.tab.id] = request.save_context;
+    }
+    return true;
+});
+/*****************************END OF SCRIPT************************************/
+
+function prepareContextForTab(id, sendResponse)
+{
+
+    loadOptionsFromStorage(function() {
+//A tab has been reloaded and ias asking for its state(new or refreshed)
+        if (Context.tabsState[id])
+        {
+            Context.tabsState[id].options = Context.options;
+// The tab has been refreshed, we send it its state
+            sendResponse({context: Context.tabsState[id]});
+            if (Context.tabsState[id].state.refresh_enabled)
             {
-                chrome.pageAction.setIcon({tabId: sender.tab.id,
+                chrome.pageAction.setIcon({tabId: id,
                     path: "images/icon_16_on.png"});
             }
 
-            // We remove the element from our tabsState array
-            var idx = Context.tabsState.indexOf(sender.tab.id);
+// We remove the element from our tabsState array
+            var idx = Context.tabsState.indexOf(id);
             if (idx > -1)
             {
                 Context.tabsState.splice(idx, 1);
@@ -95,27 +123,60 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         }
         else
         {
-            //It's a new tab
-            sendResponse({new : true});
+//It's a new tab
+            sendResponse({context: new ContentContext(Context.options)});
         }
-    }
-    // A tabs wants to change page
-    if (request.redirect)
-    {
-        if (request.options)
-        {
-            // We save its options
-            Context.tabsState[sender.tab.id] = request.options;
-            chrome.tabs.update(sender.tab.id, {url: request.redirect});
-        }
-    }
-    if (request.save_options)
-    {
-        Context.tabsState[sender.tab.id] = request.save_options;
-    }
-    return true;
-});
-/*****************************END OF SCRIPT************************************/
+    });
+}
+
+function ContentContext(options)
+{
+    /**
+     * We keep this variable so we know a previous refresh is not running
+     * @type Boolean|Boolean|Boolean
+     */
+    this.ready_to_refresh = true;
+    /**
+     * Our tab id
+     * @type Number
+     */
+    this.tab_id = -1;
+    /**
+     * String that holds the template href to add to the response button
+     * @type type
+     */
+    this.href_string = "";
+    /**
+     * Our tab options
+     * @type opt|@exp;message@pro;options
+     */
+    this.options = options ||
+            {
+                refresh_interval: 4000,
+                scroll_duration: 1000
+            };
+    this.state =
+            {
+                refresh_enabled: false,
+                notifications_enabled: false
+            };
+    this.current_page = 0;
+}
+;
+
+
+function loadOptionsFromStorage(callback)
+{
+    chrome.storage.sync.get({
+        delay_refresh: 4000,
+        scroll_duration: 1000
+    }, function(items) {
+        Context.options.refresh_interval = items.delay_refresh;
+        Context.options.scroll_duration = items.scroll_duration;
+        callback();
+    });
+
+}
 
 /**
  * @brief Displays a notification
@@ -140,14 +201,13 @@ function displayNotification(notif, tabId, windowId)
                 isClickable: true,
                 contextMessage: notif.quote
             };
-
 //We display it (we remove the previous if there was any
     chrome.notifications.create("", opt, function(id) {
 
         console.log(Context);
         if (!Context.notifications[id])
         {
-            console.log()
+
             Context.notifications[id] = new Object();
             Context.notifications[id].tab_id = 0;
             Context.notifications[id].window_id = 0;
@@ -156,7 +216,6 @@ function displayNotification(notif, tabId, windowId)
         Context.notifications[id].tab_id = tabId;
         Context.notifications[id].window_id = windowId;
         Context.notifications[id].href_url = notif.messageUrl;
-
         if (!Context.notif_op)
         {
             Context.notif_op = true;

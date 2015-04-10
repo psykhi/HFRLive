@@ -5,123 +5,92 @@
  * @brief Content script
  * 
  * The script takes care of reloading the page and appending the new messages to
- * the page. Notifications are sent if the tab is not visible
+ * it. Notifications are sent if the tab is not visible.
  */
 
-/**
- * Are we visible? Updated each second
- * @type isSelected|Boolean
- */
-var is_selected = false;
-/**
- * Our tab id
- * @type Number
- */
-var tabid = -1;
-/**
- * String that holds the template href to add to the response button
- * @type type
- */
-var href_string;
-/**
- * Our tab options
- * @type opt|@exp;message@pro;options
- */
-var options =
-        {
-            refresh_enabled: false,
-            refresh_interval: 2000,
-            notifications_enabled: false,
-            scroll_duration: 1000
-        };
-/**
- * We keep this variable so we know a previous refresh is not running
- * @type Boolean|Boolean|Boolean
- */
-var ready_to_refresh = true;
 
 
+
+
+var context;
 /***********************SCRIPT************************************/
 
-//We save the href template to respond to a message
-href_string = getElementByXpath
-        ('//*[@id="mesdiscussions"]/table[3]/tbody/tr/td[2]/div[1]/div[1]/span/a/a').
-        href;
-href_string = href_string.replace(/numrep=(.*?)&/, "numrep=trav&");
 
-// Are we new? Or just refreshed?
-chrome.runtime.sendMessage({get_options: true, get_url: true}, function(response) {
-    if (response.options)
+// Are we new? Or just refreshed? We ask for our context to the background page
+chrome.runtime.sendMessage({get_context: true}, function(response) {
+    console.log(response);
+    if (response.context)
     {
-        onNewOptions(response.options);
-        if (options.refresh_enabled)
-            buildNotification($(".messagetable").last());
+        context = response.context;
+        if (context.href_string === "")
+        {
+            //We save the href template to respond to a message
+            context.href_string = getElementByXpath
+                    ('//*[@id="mesdiscussions"]/table[3]/tbody/tr/td[2]/div[1]/div[1]/span/a/a').
+                    href;
+            context.href_string = context.href_string.replace(/numrep=(.*?)&/, "numrep=trav&");
+        }
+        // We start refreshing or not
+        if (context.state.refresh_enabled)
+        {
+            startAutoRefresh();
+        }
+
+
+        setMessageListener();
+
+        //FIXME if we are selected
+        context.current_page = getCurrentPageIndex();
+        console.log(context);
+
     }
-    else if (response.new )
+    else
     {
-        /*We are a new tab*/
-
-
-
+        /* Something wrong happened */
+        console.error("Could not get a context object !");
     }
-
-
 });
 
-loadOptionsFromStorage();
-//We'll check if we're visible every second
-setInterval(checkIfSelected, 1000);
-
-
-chrome.runtime.onMessage.addListener(
-        function(message, sender, sendResponse)
-        {
-            console.log(message);
-            if (message.options)
-            {
-                options = message.options;
-            }
-            if (message.start)
-            {
-                startAutoRefresh();
-                sendResponse(options);
-            }
-            else if (message.stop)
-            {
-                stopAutoRefresh();
-                sendResponse(options);
-            }
-            else if (message.get_options)
-            {
-                sendResponse(options);
-            }
-            else if (message.disable_notifications)
-            {
-                notificationsEnable(false);
-            }
-            else if (message.enable_notifications)
-            {
-                notificationsEnable(true);
-            }
-            else if (message.new_options)
-            {
-                registerNewOptions(message.new_options);
-            }
-        }
-);
 /*************************END OF SCRIPT****************************/
 
-function loadOptionsFromStorage()
+function setMessageListener()
 {
-    chrome.storage.sync.get({
-        delay_refresh: '2000',
-        scroll_duration: 1000
-    }, function(items) {
-        options.refresh_interval = items.delay_refresh;
-        options.scroll_duration = items.scroll_duration;
-    });
-
+    chrome.runtime.onMessage.addListener(
+            function(message, sender, sendResponse)
+            {
+                console.log(message);
+                if (message.start)
+                {
+                    startAutoRefresh();
+                    sendResponse(context.state);
+                }
+                else if (message.stop)
+                {
+                    stopAutoRefresh();
+                    sendResponse(context.state);
+                }
+                else if (message.get_state)
+                {
+                    sendResponse(context.state);
+                }
+                else if (message.disable_notifications)
+                {
+                    notificationsEnable(false);
+                }
+                else if (message.enable_notifications)
+                {
+                    notificationsEnable(true);
+                }
+                else if (message.new_options)
+                {
+                    registerNewOptions(message.new_options);
+                }
+            }
+    );
 }
+
+
+
 
 function registerNewOptions(opt)
 {
@@ -132,13 +101,13 @@ function registerNewOptions(opt)
     }
     if (opt.new_scroll_duration)
     {
-        options.scroll_duration = opt.new_scroll_duration;
+        context.options.scroll_duration = opt.new_scroll_duration;
     }
 }
 
 function changeRefreshInterval(val)
 {
-    options.refresh_interval = val;
+    context.options.refresh_interval = val;
 
 }
 /**
@@ -157,25 +126,15 @@ function getElementByXpath(path) {
  */
 function onNewOptions(opt)
 {
-    options = opt;
+    context.options = opt;
 
-    if (options.refresh_enabled)
+    if (context.state.refresh_enabled)
     {
         startAutoRefresh();
     }
-    notificationsEnable(options.notifications_enabled);
+    notificationsEnable(context.options.notifications_enabled);
 }
 
-/**
- * @brief Asks the background page id the tab is visible
- * @returns nothing /ASYNC
- */
-function checkIfSelected()
-{
-    chrome.runtime.sendMessage({is_selected: true}, function(isSelected) {
-        is_selected = isSelected;
-    });
-}
 
 /**
  * @brief Sends a notification for the last message
@@ -188,26 +147,30 @@ function checkIfSelected()
  */
 function sendNotification(content, avatar, pseudo, url, quote_author)
 {
-    var quote_text = "";
-    if (quote_author !== "")
-        quote_text = "En réponse à " + quote_author;
-    var notif =
-            {
-                message: content,
-                avatarUrl: avatar,
-                pseudo: pseudo,
-                messageUrl: url,
-                quote: quote_text
-            };
+    chrome.runtime.sendMessage({is_selected: true}, function(isSelected) {
+        console.log(isSelected);
+        if (!isSelected) {
+            var quote_text = "";
+            if (quote_author !== "")
+                quote_text = "En réponse à " + quote_author;
+            var notif =
+                    {
+                        message: content,
+                        avatarUrl: avatar,
+                        pseudo: pseudo,
+                        messageUrl: url,
+                        quote: quote_text
+                    };
 
-    var request =
-            {
-                notification: notif
-            };
-    if (!avatar)
-        notif.avatarUrl = "icon.png";
-    chrome.runtime.sendMessage(request);
-
+            var request =
+                    {
+                        notification: notif
+                    };
+            if (!avatar)
+                notif.avatarUrl = "icon.png";
+            chrome.runtime.sendMessage(request);
+        }
+    });
 }
 /**
  * 
@@ -246,12 +209,12 @@ function goToNextPage(html)
 /**
  * @brief Finds the URL to a given message
  * @param {type} message
- * @returns {@exp;href_string@call;replace}
+ * @returns {@exp;context.href_string@call;replace}
  */
 function getMessageLink(message)
 {
     var message_value = getMessageId(message);
-    return href_string.replace("trav", message_value);
+    return context.href_string.replace("trav", message_value);
 }
 
 function getMessageId(message)
@@ -275,9 +238,9 @@ function appendMissingQuoteHref(message)
 function refresh()
 {
 // Should we refresh?
-    if (ready_to_refresh && options.refresh_enabled) {
+    if (context.ready_to_refresh && context.state.refresh_enabled) {
         console.log("refreshing");
-        ready_to_refresh = false;
+        context.ready_to_refresh = false;
         var page_len = $(".messagetable").length;
         $.get(document.URL, function(data)
         {
@@ -288,6 +251,7 @@ function refresh()
                 var mess_table = $(html).find(".messagetable");
                 var mess_count = mess_table.length;
                 var current_page = getCurrentPageIndex();
+                context.current_page = current_page;
                 var last_page = getLatestPageIndex(html);
                 if (current_page !== last_page)
                 {
@@ -303,7 +267,7 @@ function refresh()
                         //We append the new message
                         message = mess_table.get(i);
                         appendMissingQuoteHref($(message));
-                        $(".messagetable").last().after(message).fadeIn(options.scroll_duration);
+                        $(".messagetable").last().after(message).fadeIn(context.options.scroll_duration);
 
                     }
                     // We change the quick response link
@@ -313,7 +277,7 @@ function refresh()
                     $('html, body').on("scroll mousedown DOMMouseScroll mousewheel keyup", function() {
                         $('html, body').stop();
                     });
-                    if (options.scroll_duration === 0)
+                    if (context.options.scroll_duration === 0)
                     {
                         window.moveTo(window.screenX, target.offset().top);
                     } else
@@ -321,17 +285,17 @@ function refresh()
                         //We scroll to the last read message
                         $('html, body').animate({
                             scrollTop: target.offset().top
-                        }, options.scroll_duration, function() {
+                        }, context.options.scroll_duration, function() {
                             $('html, body').off("scroll mousedown DOMMouseScroll mousewheel keyup");
                         });
                     }
                 }
-                ready_to_refresh = true;
+                context.ready_to_refresh = true;
             }
             catch (err)
             {
                 console.log(err.stack);
-                ready_to_refresh = true;
+                context.ready_to_refresh = true;
             }
         });
 
@@ -341,8 +305,8 @@ function refresh()
 
         //console.log("not ready to refresh.");
     }
-    if (options.refresh_enabled)
-        setTimeout(refresh, options.refresh_interval);
+    if (context.state.refresh_enabled)
+        setTimeout(refresh, context.options.refresh_interval);
 }
 /**
  * Updates the quick response POST numrep attribute 
@@ -396,7 +360,7 @@ function formatNotificationText(message)
  */
 function buildNotification(mess)
 {
-    if ((!is_selected) && options.notifications_enabled)
+    if (context.options.notifications_enabled)
     {
         try {
             var avatarUrl;
@@ -427,8 +391,10 @@ function buildNotification(mess)
  */
 function startAutoRefresh()
 {
-    timer = setTimeout(refresh, options.refresh_interval);
-    setOption({refresh_enabled: true});
+    if (!context.state.refresh_enabled) {
+        setTimeout(refresh, context.options.refresh_interval);
+        setOption({refresh_enabled: true});
+    }
 }
 
 /**
@@ -438,8 +404,6 @@ function startAutoRefresh()
 function stopAutoRefresh()
 {
     setOption({refresh_enabled: false});
-    /* We reload the options if they have changed since the last session */
-    loadOptionsFromStorage();
 }
 
 /**
@@ -461,13 +425,13 @@ function setOption(opt)
 {
     if (typeof opt.refresh_enabled !== 'undefined')
     {
-        options.refresh_enabled = opt.refresh_enabled;
+        context.state.refresh_enabled = opt.refresh_enabled;
     }
     if (typeof opt.notifications_enabled !== 'undefined')
     {
-        options.notifications_enabled = opt.notifications_enabled;
+        context.options.notifications_enabled = opt.notifications_enabled;
     }
-    chrome.runtime.sendMessage({save_options: options});
+    chrome.runtime.sendMessage({save_context: context});
 }
 
 
