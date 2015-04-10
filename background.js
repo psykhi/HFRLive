@@ -61,7 +61,7 @@ chrome.runtime.onInstalled.addListener(function() {
 });
 // We get ready to receive requests
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-    console.log(request);
+    //console.log(request);
     if (request.is_selected) {
         chrome.tabs.getSelected(null, function(tab) {
 
@@ -74,7 +74,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     }
     if (request.notification)
     {
-        displayNotification(request.notification, sender.tab.id, sender.tab.windowId);
+        prepareNotification(request.notification, sender.tab.id, sender.tab.windowId);
     }
     if (request.get_context)
     {
@@ -94,10 +94,10 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     {
         Context.tabsState[sender.tab.id] = request.save_context;
         if (!Context.tabsState[sender.tab.id].state.refresh_enabled)
-            {
-                chrome.pageAction.setIcon({tabId: sender.tab.id,
-                    path: "images/icon_16.png"});
-            }
+        {
+            chrome.pageAction.setIcon({tabId: sender.tab.id,
+                path: "images/icon_16.png"});
+        }
     }
     return true;
 });
@@ -183,40 +183,40 @@ function loadOptionsFromStorage(callback)
 
 }
 
-function convertImgToBase64(url, callback, outputFormat){
-	var canvas = document.createElement('CANVAS');
-	var ctx = canvas.getContext('2d');
-	var img = new Image;
-	img.crossOrigin = 'Anonymous';
-	img.onload = function(){
-		canvas.height = img.height;
-		canvas.width = img.width;
-	  	ctx.drawImage(img,0,0);
-	  	var dataURL = canvas.toDataURL(outputFormat || 'image/jpg');
-	  	callback.call(this, dataURL);
+function convertImgToBase64(url, callback, outputFormat) {
+    var canvas_resized = document.createElement('CANVAS');
+    var img = new Image;
+    img.crossOrigin = 'Anonymous';
+    img.onload = function() {
+
+        canvas_resized.height = 80;
+        canvas_resized.width = 80;
+        if (img.height > img.width)
+        {
+            canvas_resized.getContext('2d').drawImage(img, 80 * (1 - (img.width / img.height)) / 2, 0, (img.width / img.height) * 80, 80);
+        }
+        else
+        {
+            canvas_resized.getContext('2d').drawImage(img, 0, 80 * (1 - (img.height / img.width)) / 2, 80, (img.height / img.width) * 80);
+
+        }
+        var dataURL = canvas_resized.toDataURL(outputFormat || 'image/jpg');
+        callback.call(this, dataURL);
         // Clean up
-	  	canvas = null; 
-	};
-	img.src = url;
+        canvas_resized = null;
+    };
+    img.src = url;
 }
 
-/**
- * @brief Displays a notification
- * @param {type} notif
- * @param {type} tabId
- * @param {type} windowId window ID
- * @returns {undefined}
- */
-function displayNotification(notif, tabId, windowId)
+function displayNotification(notif, tabId, windowId, img)
 {
-    convertImgToBase64(notif.avatarUrl,function(img){
-       console.log(img); 
-    });
+    //console.log(img);
     //We prepare the notification
     var opt =
             {
                 type: "basic",
-                iconUrl: "images/icon_80.png",
+                //iconUrl: "images/icon_80.png",
+                iconUrl: img,
                 title: notif.pseudo,
                 //We remove the potential signature
                 message: notif.message.split("---------------")[0],
@@ -227,8 +227,6 @@ function displayNotification(notif, tabId, windowId)
             };
 //We display it (we remove the previous if there was any
     chrome.notifications.create("", opt, function(id) {
-
-        console.log(Context);
         if (!Context.notifications[id])
         {
 
@@ -267,4 +265,25 @@ function displayNotification(notif, tabId, windowId)
             });
         }
     });
+}
+/**
+ * @brief Displays a notification
+ * @param {type} notif
+ * @param {type} tabId
+ * @param {type} windowId window ID
+ * @returns {undefined}
+ */
+function prepareNotification(notif, tabId, windowId)
+{
+    if (notif.avatarUrl !== "")
+    {
+        convertImgToBase64(notif.avatarUrl, function(img) {
+            displayNotification(notif, tabId, windowId, img);
+        });
+    }
+    else
+    {
+        displayNotification(notif, tabId, windowId, "images/icon_80.png");
+    }
+
 }
