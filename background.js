@@ -61,7 +61,6 @@ chrome.runtime.onInstalled.addListener(function() {
 });
 // We get ready to receive requests
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-    //console.log(request);
     if (request.is_selected) {
         chrome.tabs.getSelected(null, function(tab) {
 
@@ -224,7 +223,7 @@ function displayNotification(notif, tabId, windowId, img)
                 //We remove the potential signature
                 message: notif.message.split("---------------")[0],
                 buttons: [{
-                        title: "Répondre"}, {title: "Arrêter le live"}],
+                        title: "Repondre"}, {title: "Arreter le live"}],
                 isClickable: true,
                 contextMessage: notif.quote
             };

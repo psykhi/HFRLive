@@ -20,9 +20,9 @@ chrome.runtime.sendMessage({get_context: true}, function(response) {
 
     if (response.context)
     {
-        
+
         context = response.context;
-        //console.log(context);
+        console.log(context);
         context.ready_to_refresh = true;
         if (context.href_string === "")
         {
@@ -40,6 +40,11 @@ chrome.runtime.sendMessage({get_context: true}, function(response) {
             if ((context.current_page + 1) === new_page)
             {
                 startAutoRefresh();
+                $(".messagetable").last()[0].scrollIntoView(true);
+                if (new_page === getCurrentLatestPageIndex())
+                {
+                    buildNotification($(".messagetable").last());
+                }
             }
             else
             {
@@ -121,7 +126,7 @@ function registerNewOptions(opt)
     {
         changeRefreshInterval(opt.new_refresh_delay);
     }
-    if (opt.new_scroll_duration)
+    if (typeof opt.new_scroll_duration !== 'undefined')
     {
         context.options.scroll_duration = opt.new_scroll_duration;
     }
@@ -138,21 +143,6 @@ function changeRefreshInterval(val)
  */
 function getElementByXpath(path) {
     return document.evaluate(path, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-}
-
-/**
- * @brief Callback when new options are available
- * @param {type} opt
- * @returns {undefined}
- */
-function onNewOptions(opt)
-{
-    context.options = opt;
-    if (context.state.refresh_enabled)
-    {
-        startAutoRefresh();
-    }
-    notificationsEnable(context.options.notifications_enabled);
 }
 
 
@@ -197,6 +187,14 @@ function sendNotification(content, avatar, pseudo, url, quote_author)
 function getCurrentPageIndex()
 {
     return parseInt($(".cBackHeader").find("b:last").last().get(0).innerText);
+}
+/**
+ * 
+ * @returns current page ex "33256"
+ */
+function getCurrentLatestPageIndex()
+{
+    return parseInt($(".cBackHeader .left").children().last().get(0).innerText);
 }
 /**
  * @brief Gets the latest page index
@@ -294,10 +292,10 @@ function refresh()
                     $('html, body').on("scroll mousedown DOMMouseScroll mousewheel keyup", function() {
                         $('html, body').stop();
                     });
-                    
+
                     if (context.options.scroll_duration === 0)
                     {
-                        window.moveTo(window.screenX, target.offset().top);
+                        $(".messagetable").last()[0].scrollIntoView(true);
                     } else
                     {
                         //We scroll to the last read message
@@ -376,10 +374,10 @@ function formatNotificationText(message)
  */
 function buildNotification(mess)
 {
-    if (context.options.notifications_enabled)
+    if (context.state.notifications_enabled)
     {
         try {
-            var avatarUrl ="";
+            var avatarUrl = "";
             var respondsTo = messageHasAQuote(mess);
             var messageText = formatNotificationText(mess);
             var messageUrl = getMessageLink(mess);
@@ -445,7 +443,7 @@ function setOption(opt)
     }
     if (typeof opt.notifications_enabled !== 'undefined')
     {
-        context.options.notifications_enabled = opt.notifications_enabled;
+        context.state.notifications_enabled = opt.notifications_enabled;
     }
     chrome.runtime.sendMessage({save_context: context});
 }
