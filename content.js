@@ -24,20 +24,18 @@ chrome.runtime.sendMessage({get_context: true}, function(response) {
         context = response.context;
         console.log(context);
         context.ready_to_refresh = true;
-        if (context.href_string === "")
-        {
 //We save the href template to respond to a message
-            context.href_string = getElementByXpath
-                    ('//*[@id="mesdiscussions"]/table[3]/tbody/tr/td[2]/div[1]/div[1]/span/a/a').
-                    href;
-            context.href_string = context.href_string.replace(/numrep=(.*?)&/, "numrep=trav&");
-        }
+        context.href_string = getElementByXpath
+                ('//*[@id="mesdiscussions"]/table[3]/tbody/tr/td[2]/div[1]/div[1]/span/a/a').
+                href;
+        context.href_string = context.href_string.replace(/numrep=(.*?)&/, "numrep=trav&");
+
 // We start refreshing or not
         if (context.state.refresh_enabled)
         {
             var new_page = getCurrentPageIndex();
             //Now we will check if we are on a new page so that new_page = old page +1
-            if ((context.current_page + 1) === new_page)
+            if (((context.current_page + 1) === new_page) || (context.current_page === new_page))
             {
                 startAutoRefresh();
                 $(".messagetable").last()[0].scrollIntoView(true);
