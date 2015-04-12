@@ -172,8 +172,8 @@ function sendNotification(content, avatar, pseudo, url, quote_author)
                     {
                         notification: notif
                     };
-            if (!avatar)
-                notif.avatarUrl = "icon.png";
+            if (avatar==="")
+                notif.avatarUrl = "images/icon_80.png";
             chrome.runtime.sendMessage(request);
         }
     });
